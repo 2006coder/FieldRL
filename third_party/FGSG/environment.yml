@@ -1,0 +1,40 @@
+name: FSGS
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - numpy=2.3.1
+  - scipy=1.15.3
+  - matplotlib-base=3.10
+  - tqdm
+  - pillow=11.1.0
+  - scikit-image=0.25.2
+  - scikit-learn=1.6.1
+  - pandas=2.2.3
+  - opencv=4.10.0
+  - ninja
+  - networkx=3.4.2
+  - fonttools=4.55.3
+  - imageio=2.37.0
+  - tifffile=2025.2.18
+  - joblib=1.4.2
+  - pyparsing=3.2.0
+  - unicodedata2=15.1.0
+  - tornado=6.5.1
+  - eigen=3.4.0
+  - pip:
+      - torch
+      - torchvision
+      - torchaudio
+      - torchmetrics
+      - lpips
+      - tqdm
+      - timm
+      - open3d
+      - plyfile
+      # add any other pip-only dependencies here
+
+# After creating the environment, run this to install PyTorch with CUDA 12.8:
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128

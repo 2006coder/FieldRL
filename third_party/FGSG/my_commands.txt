@@ -1,0 +1,54 @@
+# FSGS Setup Commands - Complete Installation Guide
+
+## Step 1: Create and setup conda environment
+conda env create -f environment.yml
+conda activate FSGS
+
+## Step 2: Upgrade PyTorch to support RTX 5070 (CUDA sm_120)
+pip uninstall torch torchvision torchaudio -y
+pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cu121
+
+## Step 3: Verify PyTorch installation
+python -c "import torch; print(f'PyTorch: {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}')"
+
+## Step 4: Setup dataset structure
+# Create proper COLMAP directory structure:
+# dataset/nerf_llff_data/horns/3_views/
+# ├── images/           # contains input images
+# └── sparse/
+#     └── 0/
+#         ├── cameras.bin, images.bin, points3D.bin (copied from triangulated/)
+
+## Step 5: Install custom CUDA extensions (IMPORTANT: Use Developer Command Prompt for VS 2022)
+# Close current terminal and open "Developer Command Prompt for VS 2022" from Start Menu
+cd "C:\Users\kietn\Documents\Computer Science\FGSG-main"
+conda activate FSGS
+
+# Set environment variables for building
+set DISTUTILS_USE_SDK=1
+set CUDA_HOME=%CONDA_PREFIX%
+set CUDA_PATH=%CONDA_PREFIX%
+
+# Optional: Install ninja for faster builds
+conda install ninja -c conda-forge -y
+
+# Clean any previous builds and install extensions
+pip uninstall diff-gaussian-rasterization simple-knn -y
+rmdir /s /q submodules\diff-gaussian-rasterization-confidence\build
+rmdir /s /q submodules\simple-knn\build
+pip install ./submodules/diff-gaussian-rasterization-confidence
+pip install ./submodules/simple-knn
+
+## Step 6: Verify extension installation
+python -c "import diff_gaussian_rasterization; print('diff_gaussian_rasterization imported successfully')"
+python -c "import simple_knn; print('simple_knn imported successfully')"
+
+## Step 7: Run training
+python train.py --source_path dataset/nerf_llff_data/horns --model_path output/horns --n_views 3 --sample_pseudo_interval 1
+
+# Key Issues Resolved:
+# - CUDA version mismatch (upgraded PyTorch to 2.4.1 for RTX 5070 support)
+# - Dataset structure (created proper sparse/0/ directory with COLMAP files)
+# - Custom CUDA extensions compilation (used Developer Command Prompt)
+# - DLL load failures (rebuilt extensions with new PyTorch version)
+ 

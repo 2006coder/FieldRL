@@ -1,0 +1,45 @@
+Inputs and setup
+
+Arguments: data_root, scene_name, output_dir, max_depth, depth_scale, compress_ply, sample_stride.
+Expected folders:
+rgb_intrinsics.npy (3×3 K)
+data/my_scene/color/*.png
+data/my_scene/depth/*.npy (depth in depth_scale units)
+data/my_scene/pose/*.npy (4×4 T_c2w, i.e., camera→world; your “base” frame is world)
+Intrinsics: read K; extract fx, fy, cx, cy; width/height taken from first color image.
+Open3D intrinsics: PinholeCameraIntrinsic(width, height, fx, fy, cx, cy).
+Fused point cloud
+
+For each frame i:
+Load color image, depth array, and T_c2w (camera→world).
+Build RGBDImage with depth_scale and depth_trunc=max_depth.
+Create per‑frame point cloud with extrinsic = inv(T_c2w) (Open3D expects world→camera). This places points in the “world/base” frame.
+Accumulate into the global scene point cloud.
+After fusing, estimate normals if missing (radius based on scene bbox), normalize and orient toward bbox center, then write fused.ply.
+Pixel striding → points3D and 2D tracks
+
+For each image, we subsample pixels on a regular grid with step sample_stride (default 6):
+Loop y = 0..h-1 step stride and x = 0..w-1 step stride.
+Convert depth to meters: z = depth[y, x] / depth_scale; skip if z <= 0, not finite, or z > max_depth.
+Backproject to camera coords:
+Xc = [(x - cx) * z / fx, (y - cy) * z / fy, z]
+Transform to world: Xw = R_cw @ Xc + t_cw from T_c2w.
+Take RGB = color[y, x].
+Assign a new POINT3D_ID (incremental).
+Append:
+points3D entry: id, xyz, rgb, error=0.0, track=[(image_id, point2D_idx)]
+points2d_per_image[i] entry: (x, y, POINT3D_ID)
+point2D_idx equals the index of this 2D tuple within that image’s second line in images.txt. This keeps TRACK[] consistent with COLMAP.
+COLMAP text files
+
+cameras.txt:
+One PINHOLE camera shared by all images:
+CAMERA_ID, MODEL, WIDTH, HEIGHT, fx, fy, cx, cy
+images.txt:
+First line per image: IMAGE_ID, QW QX QY QZ, TX TY TZ, CAMERA_ID, IMAGE_NAME
+We store world→camera pose (R, t). Given T_c2w, we invert: R = R_cw^T, t = −R * t_cw. Quaternion is [qw, qx, qy, qz], normalized with qw ≥ 0.
+Second line per image: space‑separated triplets (x y POINT3D_ID) for all sampled pixels in that image (order defines point2D_idx).
+points3D.txt:
+One line per 3D point: POINT3D_ID, X Y Z, R G B, ERROR, TRACK[]
+TRACK[] is a flat sequence of (IMAGE_ID POINT2D_IDX) pairs. Here each point is seen in exactly one image (1‑view tracks), which is acceptable for downstream bounds computation.
+TXT→BIN conversion
